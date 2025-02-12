@@ -1,3 +1,5 @@
+import base64
+
 from langchain_core.documents import Document
 
 from langflow.schema import Data
@@ -57,6 +59,50 @@ def data_to_text_list(template: str, data: Data | list[Data]) -> tuple[list[str]
         formatted_text.append(template.format(data=data, **kwargs))
 
     return formatted_text, data_
+
+
+def data_to_base64_list(data: Data | list[Data]) -> tuple[list[str], list[Data]]:
+    r"""Formats `files` within Data objects to base64 strings.
+
+    Converts a Data object or a list of Data objects into a tuple containing a list of base64 strings
+    and a list of Data objects based on a given template.
+
+    Args:
+        data (Data | list[Data]): A single Data object or a list of Data objects to be formatted.
+
+    Returns:
+        tuple[list[str], list[Data]]: A tuple containing a list of base64 strings, and a list of Data objects.
+    """
+    if data is None:
+        return [], []
+
+    if isinstance(data, (Data)):
+        data = [data]
+
+    b64 = []
+    for value in data:
+        # Prevent conflict with 'data' keyword in template formatting
+        kwargs = value.data.copy()
+        data = kwargs.pop("data", value.data)
+        if len(value.get("files", [])) > 0:
+            for file in value.get("files", []):
+                b64.extend(base64.b64encode(file.read()).decode("utf-8"))
+
+    return b64, data
+
+
+def data_to_base64(data: Data | list[Data]) -> str:
+    r"""Converts data into a base64 string.
+
+    Args:
+        data (Data | list[Data]): A single data item or a list of data items to be converted to base64.
+
+    Returns:
+        str: A base64 string representation of the data.
+    """
+    parsed_files, _ = data_to_base64_list(data)
+    sep = "\n"
+    return sep.join(parsed_files)
 
 
 def data_to_text(template: str, data: Data | list[Data], sep: str = "\n") -> str:
